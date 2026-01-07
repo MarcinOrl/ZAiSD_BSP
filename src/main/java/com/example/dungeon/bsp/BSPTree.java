@@ -4,11 +4,12 @@ import com.example.dungeon.map.Corridor;
 import com.example.dungeon.map.Room;
 import com.example.dungeon.util.RandomProvider;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class BSPTree {
+
     private final Leaf root;
     private final int minLeaf, maxLeaf;
     private final RandomProvider rng;
@@ -17,85 +18,114 @@ public class BSPTree {
     private final List<Room> rooms = new ArrayList<>();
     private final List<Corridor> corridors = new ArrayList<>();
 
-    public BSPTree(int x,int y,int width,int height,int minLeaf,int maxLeaf,long seed){
-        this.root = new Leaf(x,y,width,height);
+    public BSPTree(int x, int y, int width, int height,
+                   int minLeaf, int maxLeaf, long seed) {
+        this.root = new Leaf(x, y, width, height);
         this.minLeaf = minLeaf;
         this.maxLeaf = maxLeaf;
         this.rng = new RandomProvider(seed);
     }
 
+    // ---------------- BSP SPLIT ----------------
+
     public void splitAll() {
         leaves.clear();
         leaves.add(root);
+
         boolean didSplit = true;
         while (didSplit) {
             didSplit = false;
             List<Leaf> snapshot = new ArrayList<>(leaves);
-            for (int i = 0; i < snapshot.size(); i++) {
-                Leaf l = snapshot.get(i);
-                if (l.isLeaf()) {
-                    if (l.width > maxLeaf || l.height > maxLeaf || rng.nextDouble() < 0.25) {
-                        if (l.split(minLeaf, maxLeaf, rng)) {
-                            // replace leaf with its children
-                            leaves.remove(l);
-                            leaves.add(l.left);
-                            leaves.add(l.right);
-                            didSplit = true;
-                        }
+
+            for (Leaf l : snapshot) {
+                if (!l.isLeaf()) continue;
+
+                if (l.width > maxLeaf || l.height > maxLeaf || rng.nextDouble() < 0.25) {
+                    if (l.split(minLeaf, maxLeaf, rng)) {
+                        leaves.remove(l);
+                        leaves.add(l.left);
+                        leaves.add(l.right);
+                        didSplit = true;
                     }
                 }
             }
         }
     }
 
-    public List<Leaf> getLeaves(){ return new ArrayList<>(leaves); }
+    public List<Leaf> getLeaves() {
+        return new ArrayList<>(leaves);
+    }
+
+    // ---------------- ROOMS ----------------
 
     public void createRooms(int minRoomSize, int maxRoomSize, int padding) {
         rooms.clear();
+
         for (Leaf l : leaves) {
-            int maxW = Math.max(minRoomSize, Math.min(maxRoomSize, l.width - 2*padding));
-            int maxH = Math.max(minRoomSize, Math.min(maxRoomSize, l.height - 2*padding));
+            int maxW = Math.min(maxRoomSize, l.width - 2 * padding);
+            int maxH = Math.min(maxRoomSize, l.height - 2 * padding);
+
             if (maxW < minRoomSize || maxH < minRoomSize) continue;
+
             int w = rng.nextInt(minRoomSize, maxW);
             int h = rng.nextInt(minRoomSize, maxH);
-            int x = l.x + padding + rng.nextInt(0, Math.max(0, l.width - 2*padding - w));
-            int y = l.y + padding + rng.nextInt(0, Math.max(0, l.height - 2*padding - h));
+
+            int x = l.x + padding + rng.nextInt(0, l.width - 2 * padding - w);
+            int y = l.y + padding + rng.nextInt(0, l.height - 2 * padding - h);
+
             Room r = new Room(x, y, w, h);
             l.room = r;
             rooms.add(r);
         }
     }
 
+    public List<Room> getRooms() {
+        return new ArrayList<>(rooms);
+    }
+
+    // ---------------- CORRIDORS ----------------
+
     public void connectRooms() {
         corridors.clear();
         connectRec(root);
     }
 
-    private Room connectRec(Leaf node) {
+    private Point connectRec(Leaf node) {
         if (node == null) return null;
-        if (node.isLeaf()) return node.room;
-        Room leftRoom = connectRec(node.left);
-        Room rightRoom = connectRec(node.right);
-        if (leftRoom != null && rightRoom != null) {
-            // connect centers with L-shaped corridor
-            int ax = leftRoom.centerX();
-            int ay = leftRoom.centerY();
-            int bx = rightRoom.centerX();
-            int by = rightRoom.centerY();
-            // choose whether to go horizontal then vertical or vice versa
-            if (rng.nextBoolean()) {
-                // horizontal then vertical
-                corridors.add(new Corridor(ax, ay, bx, ay));
-                corridors.add(new Corridor(bx, ay, bx, by));
-            } else {
-                corridors.add(new Corridor(ax, ay, ax, by));
-                corridors.add(new Corridor(ax, by, bx, by));
-            }
+
+        if (node.isLeaf()) {
+            if (node.room == null) return null;
+            return randomPointInRoom(node.room);
         }
-        // return one representative room for parent links
-        return (leftRoom != null) ? leftRoom : rightRoom;
+
+        Point left = connectRec(node.left);
+        Point right = connectRec(node.right);
+
+        if (left != null && right != null) {
+            createCorridor(left, right);
+            return rng.nextBoolean() ? left : right;
+        }
+
+        return (left != null) ? left : right;
     }
 
-    public List<Room> getRooms() { return new ArrayList<>(rooms); }
-    public List<Corridor> getCorridors() { return new ArrayList<>(corridors); }
+    private Point randomPointInRoom(Room r) {
+        int x = rng.nextInt(r.x + 1, r.x + r.width - 2);
+        int y = rng.nextInt(r.y + 1, r.y + r.height - 2);
+        return new Point(x, y);
+    }
+
+    private void createCorridor(Point a, Point b) {
+        if (rng.nextBoolean()) {
+            corridors.add(new Corridor(a.x, a.y, b.x, a.y));
+            corridors.add(new Corridor(b.x, a.y, b.x, b.y));
+        } else {
+            corridors.add(new Corridor(a.x, a.y, a.x, b.y));
+            corridors.add(new Corridor(a.x, b.y, b.x, b.y));
+        }
+    }
+
+    public List<Corridor> getCorridors() {
+        return new ArrayList<>(corridors);
+    }
 }

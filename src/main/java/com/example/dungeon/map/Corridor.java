@@ -1,9 +1,5 @@
 package com.example.dungeon.map;
 
-/**
- * Represents a corridor as a straight segment (x1,y1)-(x2,y2).
- * For rendering we will convert to rects.
- */
 public class Corridor {
     public final int x1, y1, x2, y2;
     public Corridor(int x1, int y1, int x2, int y2){

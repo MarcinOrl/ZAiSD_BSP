@@ -14,9 +14,6 @@ public class Leaf {
 
     public boolean isLeaf() { return left == null && right == null; }
 
-    /**
-     * Try split this leaf. Return true if split occurred.
-     */
     public boolean split(int minLeafSize, int maxLeafSize, RandomProvider rng) {
         if (!isLeaf()) return false;
         boolean splitH = rng.nextBoolean();

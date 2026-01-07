@@ -5,10 +5,8 @@ import com.example.dungeon.util.ConfigParser;
 import com.example.dungeon.bsp.BSPTree;
 import com.example.dungeon.render.SVGRenderer;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -22,7 +20,8 @@ public class Main {
         BSPTree tree = new BSPTree(0,0,cfg.width,cfg.height,cfg.minLeaf,cfg.maxLeaf,cfg.seed);
         tree.splitAll();
 
-        SVGRenderer renderer = new SVGRenderer(cfg.width, cfg.height);
+        // pass full config into renderer
+        SVGRenderer renderer = new SVGRenderer(cfg);
 
         // stage 1: partition
         String f1 = out.resolve(cfg.seed + "_01_partition.svg").toString();
