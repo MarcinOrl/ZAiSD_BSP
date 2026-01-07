@@ -21,7 +21,12 @@ The output is in **SVG format**, showing three stages: leaf partitions, rooms, a
 ## Installation and Setup
 
 1. **Clone the repository:**
-
    ```bash
-   git clone https://github.com/YourUsername/BSPDungeon_SVG.git
-   cd BSPDungeon_SVG
+   git clone https://github.com/MarcinOrl/ZAiSD_BSP.git
+   cd ZAiSD_BSP
+2. **Build the project using Maven:**
+   ```bash
+   mvn package
+3. **Run with configuration file:**
+   ```bash
+   java -jar .\target\bsp-dungeon-0.1.0.jar .\config.json
